@@ -1,0 +1,24 @@
+use File::Find;
+use Digest::MD5;
+
+find( \&wanted, grep { -e } @ARGV );
+
+our %digests;
+sub wanted {
+	return if( -d $File::Find::name or -l $File::Find::name );
+	my $fh;
+	unless( open $fh, '<', $File::Find::name ) {
+		warn "$File::Find::name: $!";
+		return;
+		}
+
+	my $digest = Digest::MD5->new->addfile($fh)->hexdigest;
+
+	$digests{$digest} .= "$File::Find::name\000";
+	}
+
+foreach my $digest ( keys %digests ) {
+	my @files = split /\000/, $digests{$digest};
+	next unless @files > 1;
+	print join( "\n\t", @files ), "\n\n";
+	}
