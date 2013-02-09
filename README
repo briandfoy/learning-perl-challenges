@@ -1,0 +1,9 @@
+=pod
+
+I run some coding challenges on U<www.Learning-Perl.com> and this
+repository has my own answers. Not only can you see my final 
+answer, but you can see the mistakes I make along the way.
+
+Some answers might be in branches too. Don't just look at master.
+
+=cut
