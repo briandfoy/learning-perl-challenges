@@ -1,0 +1,58 @@
+#!/Users/brian/bin/perls/perl5.14.2
+
+use v5.12;
+use strict;
+use warnings;
+
+use File::Spec;
+use Regexp::Assemble;
+
+my $ra = Regexp::Assemble->new;
+
+while ( my( $index, $arg ) = each @ARGV ) {
+	my $re = eval { qr/$arg/ };
+	die "The pattern [$arg] at position $index is not a valid perl regex\n\t$@\n" if $@;
+	$ra->add( $arg );
+	}
+	
+my $regex = $ra->re;
+ 
+my @paths = get_path_components();
+
+foreach my $path ( @paths ) {
+	if( ! -e $path ) {
+		warn "path $path does not exist\n";
+		next;
+		}
+	elsif( ! -d $path ) {
+		warn "path $path is not a directory\n";
+		next;
+		}
+	elsif( opendir my $dh, $path ) {
+		my @commands =
+			map     {
+				if( -l ) {
+					my $target = readlink;
+					"$_ → $target";
+					}
+				else { $_ }
+				}
+			grep    { -x -f and ! -d _ }
+			map     { File::Spec->catfile( $path, $_ ) } 
+			grep    { /$regex/ } 
+			readdir $dh;
+		
+		next unless @commands;
+
+		print join "\n", @commands, '';
+		}
+	else {
+		warn "Could not read directory for $path: $!\n";		
+		}
+	}
+	
+sub get_path_components {
+	use Config;
+	my $separator = $Config{path_sep} // ':';
+	my @parts = split /$separator/, $ENV{PATH};
+	}
