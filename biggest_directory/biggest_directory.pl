@@ -1,11 +1,18 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use v5.10;
+use v5.12;
 
+use Curses;
 use Cwd qw(cwd);
 use File::Spec::Functions qw(catfile);
 use List::Util qw(sum);
+
+initscr();
+noecho();
+cbreak();
+
+END { endwin(); }
 
 my $dir = $ARGV[0] // cwd();
 
@@ -14,10 +21,13 @@ my %counts;
 
 while( my $current = shift @queue ) {
 	my $count = 0;
-
+	addstr( 11, 0, ' ' x (3*COLS) );
+	addstr( 11, 0, "Checking $current" );
+	addstr( 10, 0, '-' x COLS );
+	refresh();
 	my $dh;
 	unless( opendir $dh, $current ) {
-		warn "Could not open $current: $!\n";
+		addstr( 12, 0, "Could not open $current: $!" );
 		next;
 		}
 
@@ -29,13 +39,30 @@ while( my $current = shift @queue ) {
 		}
 
 	$counts{$current} = $count;
+
+	update_display( $current, $count );
 	}
 
-printf "Traversed %d directories and looked at %d files\n",
+my $summary = sprintf "Traversed %d directories and looked at %d files",
 	scalar keys %counts, sum( values %counts );
+addstr( 12, 0, $summary );
+refresh();
 
-foreach my $dir ( sort { $counts{$b} <=> $counts{$a} } keys %counts ) {
-	state $count = 0;
-	printf "%5d %s\n", $counts{$dir}, $dir;
-	last if $count++ > 9;
+sub update_display {
+	my( $current, $count ) = @_;
+
+	state @top_ten;
+	{
+	no warnings;
+	push @top_ten, sprintf "%5d %s", $count, $current;
+	@top_ten = sort { $b <=> $a } @top_ten;
+	pop @top_ten if @top_ten > 10;
 	}
+
+	while( my( $i, $value ) = each @top_ten ) {
+		addstr( $i, 0, ' ' x COLS );
+		addstr( $i, 0, $value );
+		}
+	refresh();
+	}
+
